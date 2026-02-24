@@ -1,294 +1,196 @@
 # Immersive Voice Agent
 
-> **Incarnez n'importe quel personnage grâce à l'IA vocale en temps réel**
+> **Incarnez n'importe quel personnage grace a l'IA vocale**
 
-Un agent vocal immersif qui utilise GPT-4o-mini pour le "casting" intelligent et OpenAI Realtime pour la synthèse vocale en temps réel via Pipecat.
+Agent vocal immersif avec deux interfaces : une **application web Gradio** deployable sur HuggingFace Spaces et un **agent terminal** pour usage local. GPT-4o-mini genere le profil du personnage, Deepgram transcrit la voix, ElevenLabs la synthetise.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
-![OpenAI](https://img.shields.io/badge/OpenAI-Realtime-orange.svg)
+![Gradio](https://img.shields.io/badge/Gradio-Web%20App-orange.svg)
 
 ---
 
-## Fonctionnalités
+## Deux Interfaces
 
-- **Casting Intelligent** : GPT-4o-mini analyse votre demande et génère automatiquement le profil vocal parfait
-- **Voix en Temps Réel** : Conversation fluide grâce à OpenAI Realtime (Speech-to-Speech)
-- **Interruptions Naturelles** : Coupez la parole à l'IA naturellement, comme dans une vraie conversation
-- **Ambiances Sonores** : 7 environnements immersifs (vaisseau spatial, taverne, forêt, etc.)
-- **Prosodie Avancée** : Intonations, pauses dramatiques et marqueurs émotionnels personnalisés
-- **Interface Futuriste** : Terminal stylisé avec Rich pour une expérience visuelle premium
-
----
-
-## Prérequis
-
-- Python 3.10 ou supérieur
-- Un compte OpenAI avec accès à l'API (GPT-4o-mini + Realtime)
-- Un compte Daily.co (gratuit) pour le transport audio
+| | Web (app.py) | Terminal (universal\_agent\_v3.py) |
+|---|---|---|
+| **Pipeline** | Deepgram STT + GPT-4o-mini + ElevenLabs TTS | OpenAI Realtime **ou** Pipeline |
+| **Transport** | Navigateur (micro Gradio) | Daily.co (WebRTC) |
+| **Deploiement** | HuggingFace Spaces (CPU Basic) | Local |
+| **Clonage de voix** | Oui (upload de samples) | Oui (dossier voice\_samples/) |
+| **Prerequis** | 3 cles API | 3-4 cles API + Daily.co |
 
 ---
 
 ## Installation
 
-### 1. Cloner le repository
-
 ```bash
 git clone https://github.com/votre-username/immersive-voice-agent.git
 cd immersive-voice-agent
-```
 
-### 2. Créer un environnement virtuel
-
-```bash
-# Windows
 python -m venv venv
-venv\Scripts\activate
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
 
-# macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Installer les dépendances
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configurer les variables d'environnement
-
-Créez un fichier `.env` à la racine du projet :
+Copiez `.env.example` vers `.env` et remplissez vos cles :
 
 ```env
-# OpenAI API Key (obligatoire)
-OPENAI_API_KEY=sk-votre-cle-api-openai
-
-# Daily.co Room URL (obligatoire)
-DAILY_ROOM_URL=https://votre-domaine.daily.co/votre-room
-
-# Daily.co Token (optionnel mais recommandé)
-DAILY_TOKEN=votre-token-daily
+OPENAI_API_KEY=sk-...
+DEEPGRAM_API_KEY=...
+ELEVENLABS_API_KEY=...
 ```
 
 ---
 
-## Obtenir les Clés API
+## Obtenir les Cles API
 
-### OpenAI API Key
-
-1. Rendez-vous sur [platform.openai.com](https://platform.openai.com/)
-2. Connectez-vous ou créez un compte
-3. Allez dans **API Keys** > **Create new secret key**
-4. Copiez la clé (elle ne sera plus visible après)
-5. Assurez-vous d'avoir des crédits sur votre compte
-
-> **Note** : L'API Realtime nécessite un accès spécifique. Vérifiez que votre compte y a accès.
-
-### Daily.co Room
-
-1. Créez un compte gratuit sur [daily.co](https://www.daily.co/)
-2. Dans le Dashboard, cliquez sur **Rooms** > **Create Room**
-3. Configurez votre room :
-   - **Room name** : choisissez un nom (ex: `voice-agent-room`)
-   - **Privacy** : `public` pour les tests
-4. Copiez l'URL de la room (format: `https://votre-domaine.daily.co/voice-agent-room`)
-
-**Optionnel - Token d'authentification :**
-1. Allez dans **Developers** > **API Keys**
-2. Créez une clé API
-3. Utilisez-la pour générer des tokens de meeting (voir documentation Daily.co)
+| Service | Lien | Gratuit ? |
+|---------|------|-----------|
+| OpenAI | [platform.openai.com](https://platform.openai.com/api-keys) | Credits prepaid |
+| Deepgram | [console.deepgram.com](https://console.deepgram.com/signup) | $200 de credits offerts |
+| ElevenLabs | [elevenlabs.io](https://elevenlabs.io/app/sign-up) | Plan gratuit disponible |
 
 ---
 
 ## Utilisation
 
-### Lancement
+### Application Web (Gradio)
 
 ```bash
-python universal_agent.py
+python app.py
 ```
 
-### Workflow
+Ouvrez `http://localhost:7860` dans votre navigateur.
 
-1. **Démarrage** : L'interface futuriste s'affiche
-2. **Choix du personnage** : Décrivez qui vous voulez incarner
-3. **Sélection d'ambiance** : Choisissez un environnement sonore (optionnel)
-4. **Casting** : L'IA génère le profil vocal optimal
-5. **Connexion** : Ouvrez l'URL Daily.co dans votre navigateur
-6. **Conversation** : Parlez avec votre personnage !
+1. Entrez un nom de personnage (ex: *Emmanuel Macron*, *Yoda*, *Un pirate*)
+2. Choisissez la longueur du contexte (Court / Moyen / Long)
+3. Optionnel : selectionnez une ambiance, activez le clonage de voix
+4. Cliquez **Lancer l'Agent**
+5. Parlez dans le micro — l'agent repond avec la voix du personnage
+
+#### Deploiement HuggingFace Spaces
+
+1. Creez un Space avec le SDK **Gradio**
+2. Poussez le code (au minimum `app.py` + `requirements.txt`)
+3. Dans **Settings > Secrets**, ajoutez `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`
+4. Le Space demarre automatiquement
+
+### Agent Terminal (local)
+
+```bash
+python universal_agent_v3.py
+```
+
+Necessite un compte [Daily.co](https://daily.co) (gratuit). Ajoutez dans `.env` :
+
+```env
+DAILY_ROOM_URL=https://votre-domaine.daily.co/room-name
+DAILY_TOKEN=          # vide pour room publique
+```
+
+Deux modes disponibles :
+- **Realtime** : OpenAI Realtime natif (8 voix, ~150ms)
+- **Pipeline** : Deepgram STT + GPT-4o-mini + ElevenLabs TTS (clonage de voix)
 
 ---
 
 ## Exemples de Personnages
 
-### Personnages Fictifs
+| Personnage | Style | Ambiance suggeree |
+|------------|-------|-------------------|
+| Emmanuel Macron | Discours presidentiel | Aucune |
+| Yoda | Syntaxe inversee, sagesse | Foret |
+| Darth Vader | Voix grave, menacant | Vaisseau Spatial |
+| Gandalf | Bienveillant, mysterieux | Taverne |
+| Un vendeur de tapis marocain | Enthousiaste, negociateur | Ville |
+| Un capitaine de sous-marin | Autoritaire, precis | Sous-marin |
 
-| Personnage | Description | Ambiance Recommandée |
-|------------|-------------|---------------------|
-| **Yoda** | Maître Jedi sage, syntaxe inversée | Forêt |
-| **GLaDOS** | IA sarcastique de Portal | Vaisseau Spatial |
-| **Gandalf** | Magicien bienveillant mais mystérieux | Taverne |
-| **Dark Vador** | Seigneur Sith intimidant | Vaisseau Spatial |
-| **Jack Sparrow** | Pirate excentrique et rusé | Taverne |
-
-### Personnages Historiques
-
-| Personnage | Description | Ambiance Recommandée |
-|------------|-------------|---------------------|
-| **Napoléon Bonaparte** | Empereur stratège et ambitieux | Champ de Bataille |
-| **Cléopâtre** | Reine d'Égypte, charisme légendaire | Aucune |
-| **Albert Einstein** | Physicien génial et espiègle | Aucune |
-| **Sherlock Holmes** | Détective logique et observateur | Ville |
-
-### Personnages Génériques
-
-| Personnage | Description | Ambiance Recommandée |
-|------------|-------------|---------------------|
-| **Un barman de speakeasy des années 20** | Mystérieux, accent de l'époque | Taverne |
-| **Un capitaine de sous-marin** | Autoritaire mais bienveillant | Sous-marin |
-| **Un vendeur de tapis marocain** | Enthousiaste, négociateur né | Ville |
-| **Un druide de forêt ancienne** | Sage, connecté à la nature | Forêt |
-| **Un commandant de vaisseau spatial** | Professionnel, calme sous pression | Vaisseau Spatial |
-
-### Prompts Créatifs Avancés
-
-```
-"Un robot qui découvre les émotions humaines pour la première fois"
-
-"Un fantôme victorien poli qui hante poliment sa propre maison"
-
-"Un chef cuisinier français passionné qui s'énerve facilement"
-
-"Un narrateur de documentaire nature façon David Attenborough"
-
-"Un vendeur de voitures d'occasion BEAUCOUP trop enthousiaste"
-```
+**Prompts creatifs** :
+- "Un robot qui decouvre les emotions humaines"
+- "Un chef cuisinier francais qui s'enerve facilement"
+- "Un narrateur de documentaire nature facon David Attenborough"
 
 ---
 
-## Architecture du Projet
+## Architecture
 
 ```
 immersive-voice-agent/
-├── universal_agent.py    # Application principale
-├── requirements.txt      # Dépendances Python
-├── .env                  # Variables d'environnement (non versionné)
-├── .gitignore           # Fichiers à ignorer par Git
-├── README.md            # Cette documentation
-└── logs/                # Logs de l'application (auto-généré)
-    └── agent_YYYY-MM-DD.log
+├── app.py                  # Interface web Gradio (HuggingFace Spaces)
+├── universal_agent_v3.py   # Agent terminal (Realtime + Pipeline)
+├── requirements.txt        # Dependances Python
+├── .env                    # Variables d'environnement (non versionne)
+├── .env.example            # Template de configuration
+├── .gitignore
+├── README.md
+├── voice_samples/          # Samples vocaux pour clonage (optionnel)
+│   └── emmanuel_macron/
+│       └── sample.mp3
+└── logs/                   # Logs (terminal uniquement)
 ```
 
-### Modules Internes
+### Pipeline Web (app.py)
 
-Le code est organisé en 4 modules principaux :
-
-1. **CastingDirector** : Génération intelligente des profils via GPT-4o-mini
-2. **VoiceEngine** : Orchestration du pipeline Pipecat + OpenAI Realtime
-3. **TerminalUI** : Interface console stylisée avec Rich
-4. **ImmersiveVoiceAgent** : Coordinateur principal de l'application
-
----
-
-## Configuration Avancée
-
-### Personnaliser les Voix
-
-Les voix disponibles sont :
-
-| Voix | Description |
-|------|-------------|
-| `alloy` | Neutre, polyvalente |
-| `ash` | Grave, posée, mature |
-| `ballad` | Chaleureuse, expressive |
-| `coral` | Claire, amicale |
-| `echo` | Profonde, mystérieuse |
-| `sage` | Calme, sage, réfléchie |
-| `shimmer` | Brillante, énergique |
-| `verse` | Poétique, mélodieuse |
-
-### Ajouter une Ambiance Personnalisée
-
-Modifiez le dictionnaire `AMBIANCE_DESCRIPTIONS` dans `universal_agent.py` :
-
-```python
-AMBIANCE_DESCRIPTIONS = {
-    # ... ambiances existantes ...
-    Ambiance.CUSTOM: "Description de votre ambiance personnalisée...",
-}
+```
+Micro navigateur ──> Deepgram STT ──> GPT-4o-mini ──> ElevenLabs TTS ──> Audio navigateur
+                     (nova-2, fr)     (casting +       (eleven_multilingual_v2)
+                                       conversation)
 ```
 
-### Ajuster la Sensibilité aux Interruptions
+### Pipeline Terminal - Mode Realtime
 
-Dans la méthode `_create_session_properties` de `VoiceEngine` :
+```
+Micro ──> Daily.co ──> OpenAI Realtime (speech-to-speech) ──> Daily.co ──> Haut-parleur
+```
 
-```python
-turn_detection = SemanticTurnDetection(
-    eagerness=0.8,  # 0.0 à 1.0 - Plus haut = plus réactif
-    create_response=True,
-    interrupt_response=True
-)
+### Pipeline Terminal - Mode Pipeline
+
+```
+Micro ──> Daily.co ──> Deepgram STT ──> GPT-4o-mini ──> ElevenLabs TTS ──> Daily.co ──> HP
 ```
 
 ---
 
-## Dépannage
+## Clonage de Voix
 
-### "OPENAI_API_KEY not found"
+### Via l'interface web
 
-- Vérifiez que le fichier `.env` existe à la racine du projet
-- Vérifiez que la clé est correctement formatée (commence par `sk-`)
-- Relancez le terminal après avoir créé le fichier `.env`
+1. Cochez **Clonage de voix**
+2. Uploadez 1 a 3 fichiers audio (.mp3 / .wav) de la personne a cloner
+3. Lancez l'agent — ElevenLabs clone la voix automatiquement
 
-### "Connection refused" sur Daily.co
+### Via le terminal
 
-- Vérifiez l'URL de votre room Daily.co
-- Assurez-vous que la room existe et est active
-- Testez l'URL directement dans votre navigateur
+Placez des fichiers audio dans `voice_samples/<nom_personnage>/` :
 
-### L'IA ne répond pas / Audio muet
+```bash
+mkdir -p voice_samples/emmanuel_macron
+# Ajoutez des .mp3 ou .wav (30s minimum, voix propre)
+```
 
-1. Autorisez l'accès au microphone dans votre navigateur
-2. Vérifiez que votre micro fonctionne (test dans les paramètres système)
-3. Consultez les logs dans `logs/agent_YYYY-MM-DD.log`
-
-### Erreur "Rate limit exceeded"
-
-- Vous avez atteint la limite de requêtes OpenAI
-- Attendez quelques minutes ou vérifiez votre quota sur platform.openai.com
+Si aucun sample n'est disponible, une voix ElevenLabs predefinie est utilisee.
 
 ---
 
-## Contribuer
+## Depannage
 
-Les contributions sont les bienvenues ! N'hésitez pas à :
-
-1. Fork le projet
-2. Créer une branche (`git checkout -b feature/amazing-feature`)
-3. Commit vos changements (`git commit -m 'Add amazing feature'`)
-4. Push sur la branche (`git push origin feature/amazing-feature`)
-5. Ouvrir une Pull Request
+| Probleme | Solution |
+|----------|----------|
+| "Cle API manquante" | Verifiez `.env` ou les Secrets HuggingFace |
+| Pas de transcription | Verifiez que le micro est autorise dans le navigateur |
+| Erreur STT / TTS | Verifiez vos credits Deepgram / ElevenLabs |
+| "Rate limit exceeded" | Attendez ou verifiez votre quota OpenAI |
+| Audio muet (terminal) | Verifiez `DAILY_ROOM_URL`, room en mode PUBLIC |
 
 ---
 
 ## Licence
 
-MIT License - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+MIT License
 
 ---
 
-## Remerciements
-
-- [Pipecat](https://github.com/pipecat-ai/pipecat) - Framework de pipelines vocaux
-- [OpenAI](https://openai.com) - API GPT-4o-mini et Realtime
-- [Daily.co](https://daily.co) - Infrastructure de communication en temps réel
-- [Rich](https://github.com/Textualize/rich) - Interface terminal magnifique
-- [Loguru](https://github.com/Delgan/loguru) - Logging simplifié
-
----
-
-<p align="center">
-  <strong>Créé avec passion pour l'immersion vocale</strong><br>
-  <em>Que la Force (vocale) soit avec vous !</em>
-</p>
+*Powered by GPT-4o-mini, Deepgram, ElevenLabs, Gradio, Pipecat*
