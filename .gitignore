@@ -89,3 +89,7 @@ tmp/
 # --- Daily.co / Pipecat specific ---
 recordings/
 audio_dumps/
+
+# --- Gradio ---
+flagged/
+gradio_cached_examples/
