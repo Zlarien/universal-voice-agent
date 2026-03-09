@@ -9,6 +9,9 @@
 *.env
 secrets.json
 credentials.json
+%USERPROFILE%/
+nul
+.config/
 
 # --- Python ---
 __pycache__/
