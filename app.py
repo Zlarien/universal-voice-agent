@@ -27,18 +27,19 @@ AMBIANCE_DESCRIPTIONS = {
     "Tempete": "Il y a une tempete dehors. Tonnerre, pluie battante, vent violent.",
     "Champ de Bataille": "Tu es sur un champ de bataille. Explosions au loin, ordres cries, chaos.",
 }
-
 VOICE_SUGGESTIONS = {
-    "macron": "XrM2xpfBbr21lHjPgkQJ",
-    "trump": "cjVigY5qzO86Huf0OWal",
-    "zelensky": "XB0fDUnXU5powFXDhCwa",
-    "gandalf": "TX3AEvVoIzMeN6CkEd4u",
-    "yoda": "XB0fDUnXU5powFXDhCwa",
-    "darth vader": "XB0fDUnXU5powFXDhCwa",
-    "spongebob": "N2lVS1w4EtoT3dr4eOWO",
+    "macron": "SOLYcAMMMFvdbTCfUWWU",  # Une voix masculine posée
+    "trump": "G17SuINrv2H9FC6nvetn",   # Une voix masculine forte
+    "zelensky": "G17SuINrv2H9FC6nvetn",
+    "gandalf": "G17SuINrv2H9FC6nvetn",
+    "yoda": "qr9D67rNgxf5xNgv46nx",
+    "darth vader": "NxGA8X3YhTrnf3TRQf6Q",
+    "spongebob": "qr9D67rNgxf5xNgv46nx",
 }
+ 
 
-DEFAULT_VOICE_ID = "XB0fDUnXU5powFXDhCwa"
+
+DEFAULT_VOICE_ID = "SOLYcAMMMFvdbTCfUWWU"
 
 CONTEXT_LENGTH_MAP = {
     "Court": 6,
@@ -48,27 +49,21 @@ CONTEXT_LENGTH_MAP = {
 
 CASTING_PROMPT = """Tu es un expert en "Prompt Engineering" pour des acteurs IA vocaux.
 Ton but est de creer une "Fiche Personnage" ultra-detaillee pour un agent vocal.
-
 L'utilisateur va te donner un nom de personnage (reel, fictif ou generique).
 Tu dois generer un profil COMPLET avec :
-
 1. **SYSTEM_PROMPT IMMERSIF** :
    - Definir le ton general, le vocabulaire, les tics de langage
    - Inclure le contexte et le background du personnage
    - Ajouter des REGLES STRICTES pour ne jamais sortir du personnage
-
 2. **DIRECTIVES DE PROSODIE** :
    - Rythme de parole (rapide, lent, saccade, fluide)
    - Intonations typiques (montantes, descendantes, monotones)
    - Volume et intensite (chuchotements, eclats, variations)
-
 3. **MARQUEURS EMOTIONNELS** :
    - Liste des emotions principales du personnage
    - Comment ces emotions se manifestent vocalement
-
 4. **CHOIX DE VOIX** :
    Choisis la plus adaptee parmi : [alloy, ash, ballad, coral, echo, sage, shimmer, verse]
-
 Format JSON STRICT :
 {
     "system_prompt": "Tu es [Nom]... [prompt complet avec prosodie integree]",
@@ -169,23 +164,32 @@ def clone_voice(name: str, sample_files: list[str]) -> str:
 
 
 def transcribe_audio(audio_path: str) -> str:
-    """Transcribe an audio file using Deepgram pre-recorded API."""
-    client = _get_deepgram()
+    """Transcribe an audio file bypassing the SDK to avoid versioning errors."""
+    import requests
+    import os
+    
+    api_key = os.environ.get("DEEPGRAM_API_KEY")
+    url = "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=fr"
+    
+    headers = {
+        "Authorization": f"Token {api_key}",
+        "Content-Type": "audio/wav"
+    }
+    
     with open(audio_path, "rb") as f:
         audio_bytes = f.read()
-
-    response = client.listen.rest.v("1").transcribe_file(
-        {"buffer": BytesIO(audio_bytes), "mimetype": "audio/wav"},
-        {"model": "nova-2", "smart_format": True, "language": "fr"},
-    )
-
-    result = response.to_dict()
+        
+    response = requests.post(url, headers=headers, data=audio_bytes)
+    result = response.json()
+    
     channels = result.get("results", {}).get("channels", [])
     if not channels:
         return ""
+        
     alternatives = channels[0].get("alternatives", [])
     if not alternatives:
         return ""
+        
     return alternatives[0].get("transcript", "")
 
 
@@ -404,9 +408,7 @@ footer { display: none !important; }
 # ---------------------------------------------------------------------------
 
 with gr.Blocks(
-    theme=gr.themes.Soft(),
     title="Immersive Voice Agent",
-    css=CUSTOM_CSS,
 ) as demo:
 
     # State
@@ -483,7 +485,6 @@ with gr.Blocks(
     chatbot = gr.Chatbot(
         label="Historique de conversation",
         height=400,
-        type="messages",
     )
 
     # ---- Row 5 : Status ----
@@ -546,4 +547,4 @@ with gr.Blocks(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860,theme=gr.themes.Soft(), css=CUSTOM_CSS)
