@@ -9,9 +9,15 @@ import os
 import tempfile
 from io import BytesIO
 import gradio as gr
+from dotenv import load_dotenv
+
+load_dotenv()   # sans ca, les 3 cles du .env ne sont jamais lues en local
 from deepgram import DeepgramClient
 from elevenlabs import ElevenLabs
 from openai import OpenAI
+from free_voice_generator import VoiceGenerator
+
+free_tts = VoiceGenerator()
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -46,6 +52,26 @@ CONTEXT_LENGTH_MAP = {
     "Moyen": 14,
     "Long": 30,
 }
+
+REQUIRED_KEYS = ("OPENAI_API_KEY", "DEEPGRAM_API_KEY", "ELEVENLABS_API_KEY")
+
+
+def missing_keys() -> list[str]:
+    """Liste les cles API absentes de l'environnement, sans jamais lever."""
+    return [k for k in REQUIRED_KEYS if not os.environ.get(k)]
+
+
+def startup_message() -> str:
+    """Message affiche au demarrage : etat des cles, jamais bloquant."""
+    absentes = missing_keys()
+    if absentes:
+        return (
+            "Cles API manquantes : " + ", ".join(absentes) + ".\n"
+            "L'application demarre mais ne peut pas repondre tant qu'elles ne sont pas "
+            "renseignees dans Settings > Variables and secrets du Space "
+            "(ou dans un fichier .env en local)."
+        )
+    return "Choisissez un personnage et cliquez sur 'Lancer l'Agent'."
 
 CASTING_PROMPT = """Tu es un expert en "Prompt Engineering" pour des acteurs IA vocaux.
 Ton but est de creer une "Fiche Personnage" ultra-detaillee pour un agent vocal.
@@ -166,22 +192,30 @@ def clone_voice(name: str, sample_files: list[str]) -> str:
 def transcribe_audio(audio_path: str) -> str:
     """Transcribe an audio file bypassing the SDK to avoid versioning errors."""
     import requests
-    import os
-    
+
     api_key = os.environ.get("DEEPGRAM_API_KEY")
+    if not api_key:
+        raise EnvironmentError(
+            "Cle API manquante : DEEPGRAM_API_KEY. Configurez-la dans les Secrets HuggingFace."
+        )
+
     url = "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=fr"
-    
+
     headers = {
         "Authorization": f"Token {api_key}",
         "Content-Type": "audio/wav"
     }
-    
+
     with open(audio_path, "rb") as f:
         audio_bytes = f.read()
-        
-    response = requests.post(url, headers=headers, data=audio_bytes)
+
+    response = requests.post(url, headers=headers, data=audio_bytes, timeout=60)
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Deepgram a repondu {response.status_code} : {response.text[:200]}"
+        )
     result = response.json()
-    
+
     channels = result.get("results", {}).get("channels", [])
     if not channels:
         return ""
@@ -208,8 +242,11 @@ def llm_respond(system_prompt: str, conversation: list[dict], context_length: st
     return response.choices[0].message.content
 
 
-def text_to_speech(text: str, voice_id: str) -> str:
-    """Convert text to speech with ElevenLabs. Returns path to mp3 file."""
+def text_to_speech(text: str, voice_id: str, tts_mode: str, character_name: str) -> str:
+    """Convert text to speech depending on the selected TTS mode."""
+    if tts_mode == "Gratuit (FakeYou/XTTS/gTTS)":
+        return free_tts.generate(character_name, text)
+
     client = _get_elevenlabs()
     audio_iter = client.text_to_speech.convert(
         text=text,
@@ -234,11 +271,21 @@ def launch_agent(
     character_name: str,
     context_length: str,
     ambiance: str,
+    tts_mode: str,
     voice_clone_enabled: bool,
     clone_files,
     state: dict,
 ):
     """Initialize the agent with a character profile."""
+    absentes = missing_keys()
+    if absentes:
+        return (
+            state,
+            gr.update(interactive=False),
+            startup_message(),
+            [],
+        )
+
     if not character_name or not character_name.strip():
         return (
             state,
@@ -276,6 +323,7 @@ def launch_agent(
         "active": True,
         "system_prompt": profile["system_prompt"],
         "voice_id": voice_id,
+        "tts_mode": tts_mode,
         "conversation": [],
         "character_name": character_name.strip(),
         "context_length": context_length,
@@ -298,6 +346,9 @@ def launch_agent(
 
 def process_audio(audio_path, state: dict, chatbot_history: list):
     """Handle a recorded audio clip: STT -> LLM -> TTS."""
+    if chatbot_history is None:
+        chatbot_history = []
+
     if not state or not state.get("active"):
         return state, chatbot_history, None, "Agent non actif. Lancez l'agent d'abord."
 
@@ -336,7 +387,12 @@ def process_audio(audio_path, state: dict, chatbot_history: list):
 
     # 4. TTS
     try:
-        audio_out_path = text_to_speech(answer, state["voice_id"])
+        audio_out_path = text_to_speech(
+            answer,
+            state["voice_id"],
+            state.get("tts_mode", "ElevenLabs (Payant)"),
+            state["character_name"],
+        )
     except Exception as exc:
         return state, chatbot_history, None, f"Erreur TTS : {exc}"
 
@@ -350,6 +406,7 @@ def change_character(state: dict):
         "active": False,
         "system_prompt": "",
         "voice_id": "",
+        "tts_mode": "ElevenLabs (Payant)",
         "conversation": [],
         "character_name": "",
         "context_length": "Moyen",
@@ -376,6 +433,15 @@ def stop_agent(state: dict):
 def toggle_clone_ui(enabled: bool):
     """Show or hide the voice sample upload component."""
     return gr.update(visible=enabled)
+
+
+def on_tts_mode_change(tts_mode: str):
+    """Show/hide ElevenLabs-specific controls based on TTS mode."""
+    is_elevenlabs = tts_mode == "ElevenLabs (Payant)"
+    return (
+        gr.update(visible=is_elevenlabs),      # clone_cb
+        gr.update(visible=False),              # clone_files_input (always hide on mode change)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -409,6 +475,8 @@ footer { display: none !important; }
 
 with gr.Blocks(
     title="Immersive Voice Agent",
+    theme=gr.themes.Soft(),
+    css=CUSTOM_CSS,
 ) as demo:
 
     # State
@@ -417,6 +485,7 @@ with gr.Blocks(
             "active": False,
             "system_prompt": "",
             "voice_id": "",
+            "tts_mode": "ElevenLabs (Payant)",
             "conversation": [],
             "character_name": "",
             "context_length": "Moyen",
@@ -432,6 +501,17 @@ with gr.Blocks(
         </div>
         """,
     )
+
+    # Bandeau d'alerte : uniquement si des cles manquent au demarrage
+    if missing_keys():
+        gr.Markdown(
+            "### Configuration incomplete\n"
+            "Cles API manquantes : **" + ", ".join(missing_keys()) + "**.\n\n"
+            "Sur HuggingFace Spaces : onglet **Settings**, section "
+            "**Variables and secrets**, ajoutez chaque cle en tant que *Secret*, "
+            "puis relancez le Space (**Factory rebuild** non necessaire, un restart suffit).\n\n"
+            "En local : copiez `.env.example` vers `.env` et remplissez les valeurs."
+        )
 
     # ---- Row 1 : Configuration ----
     with gr.Row():
@@ -452,7 +532,12 @@ with gr.Blocks(
                 choices=list(AMBIANCE_DESCRIPTIONS.keys()),
                 value="Aucune",
             )
-            clone_cb = gr.Checkbox(label="Clonage de voix", value=False)
+            tts_mode_radio = gr.Radio(
+                label="Mode TTS",
+                choices=["ElevenLabs (Payant)", "Gratuit (FakeYou/XTTS/gTTS)"],
+                value="ElevenLabs (Payant)",
+            )
+            clone_cb = gr.Checkbox(label="Clonage de voix (ElevenLabs)", value=False)
             clone_files_input = gr.File(
                 label="Samples audio pour clonage (.mp3 / .wav)",
                 file_types=[".mp3", ".wav"],
@@ -478,24 +563,28 @@ with gr.Blocks(
         with gr.Column(scale=1):
             audio_output = gr.Audio(
                 label="Reponse",
+                type="filepath",
                 autoplay=True,
+                interactive=False,
             )
 
     # ---- Row 4 : Chatbot ----
     chatbot = gr.Chatbot(
         label="Historique de conversation",
         height=400,
+        type="messages",
     )
 
     # ---- Row 5 : Status ----
     status_box = gr.Textbox(
         label="Statut",
         interactive=False,
-        value="Choisissez un personnage et cliquez sur 'Lancer l'Agent'.",
+        lines=3,
+        value=startup_message(),
     )
 
     # Footer
-    gr.HTML('<p id="powered-by">Powered by GPT-4o-mini &bull; Deepgram &bull; ElevenLabs</p>')
+    gr.HTML('<p id="powered-by">Powered by GPT-4o-mini &bull; Deepgram &bull; ElevenLabs / FakeYou / gTTS</p>')
 
     # ---- Events ----
 
@@ -505,12 +594,19 @@ with gr.Blocks(
         outputs=[clone_files_input],
     )
 
+    tts_mode_radio.change(
+        fn=on_tts_mode_change,
+        inputs=[tts_mode_radio],
+        outputs=[clone_cb, clone_files_input],
+    )
+
     launch_btn.click(
         fn=launch_agent,
         inputs=[
             character_input,
             context_dd,
             ambiance_dd,
+            tts_mode_radio,
             clone_cb,
             clone_files_input,
             agent_state,
@@ -547,4 +643,5 @@ with gr.Blocks(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860,theme=gr.themes.Soft(), css=CUSTOM_CSS)
+    # Local only by default: a public bind would let anyone spend your API keys.
+    demo.launch(server_name=os.getenv("GRADIO_SERVER_NAME", "127.0.0.1"), server_port=7860)

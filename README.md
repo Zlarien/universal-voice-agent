@@ -1,3 +1,16 @@
+---
+title: Immersive Voice Agent
+emoji: "🎭"
+colorFrom: purple
+colorTo: indigo
+sdk: gradio
+sdk_version: "4.44.1"
+app_file: app.py
+pinned: false
+license: mit
+short_description: Talk to any character. Deepgram + GPT-4o-mini + ElevenLabs.
+---
+
 # Immersive Voice Agent
 
 > **Incarnez n'importe quel personnage grace a l'IA vocale**
@@ -25,8 +38,8 @@ Agent vocal immersif avec deux interfaces : une **application web Gradio** deplo
 ## Installation
 
 ```bash
-git clone https://github.com/votre-username/immersive-voice-agent.git
-cd immersive-voice-agent
+git clone https://github.com/zlarien/universal-voice-agent.git
+cd universal-voice-agent
 
 python -m venv venv
 # Windows: venv\Scripts\activate
@@ -69,14 +82,24 @@ Ouvrez `http://localhost:7860` dans votre navigateur.
 2. Choisissez la longueur du contexte (Court / Moyen / Long)
 3. Optionnel : selectionnez une ambiance, activez le clonage de voix
 4. Cliquez **Lancer l'Agent**
-5. Parlez dans le micro — l'agent repond avec la voix du personnage
+5. Parlez dans le micro : l'agent repond avec la voix du personnage
 
 #### Deploiement HuggingFace Spaces
 
-1. Creez un Space avec le SDK **Gradio**
-2. Poussez le code (au minimum `app.py` + `requirements.txt`)
-3. Dans **Settings > Secrets**, ajoutez `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`
+1. Creez un Space avec le SDK **Gradio**, hardware CPU Basic
+2. Poussez le code : `app.py`, `requirements.txt` et ce `README.md` (son en-tete YAML configure le Space)
+3. Dans **Settings > Variables and secrets**, ajoutez trois **Secrets** :
+   `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`
 4. Le Space demarre automatiquement
+
+> **Ne televersez jamais `.env`.** Il est ignore par git, mais l'upload par
+> glisser-deposer dans l'interface web HuggingFace ignore le `.gitignore` :
+> le fichier partirait en clair dans un depot public. Les cles passent
+> uniquement par **Settings > Variables and secrets**.
+
+L'application **demarre meme sans les cles** : elle affiche alors un bandeau
+qui liste celles qui manquent, au lieu de planter au boot. Renseignez les
+secrets puis redemarrez le Space (bouton *Restart*, pas besoin de rebuild).
 
 ### Agent Terminal (local)
 
@@ -160,7 +183,7 @@ Micro ──> Daily.co ──> Deepgram STT ──> GPT-4o-mini ──> ElevenLa
 
 1. Cochez **Clonage de voix**
 2. Uploadez 1 a 3 fichiers audio (.mp3 / .wav) de la personne a cloner
-3. Lancez l'agent — ElevenLabs clone la voix automatiquement
+3. Lancez l'agent : ElevenLabs clone la voix automatiquement
 
 ### Via le terminal
 
@@ -194,3 +217,10 @@ MIT License
 ---
 
 *Powered by GPT-4o-mini, Deepgram, ElevenLabs, Gradio, Pipecat*
+
+## Responsible use
+
+- Voice cloning is **off by default**. Only set `ALLOW_VOICE_CLONE=1` for voices you have the right to use, with the person's consent.
+- Do not use this project to impersonate a real person, deceive anyone, or reuse copyrighted audio.
+- The Gradio app listens on `127.0.0.1` by default. Exposing it publicly (`GRADIO_SERVER_NAME=0.0.0.0`) lets anyone spend your API keys.
+- API keys stay in a local `.env` file, which is git-ignored.
