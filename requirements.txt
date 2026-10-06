@@ -21,3 +21,5 @@ elevenlabs==1.58.1
 # Arrive de toute facon en dependance transitive, mais app.py l'importe
 # explicitement : on le declare pour ne pas dependre d'un hasard de resolution.
 requests>=2.31.0
+gTTS>=2.5
+yt-dlp>=2024.1.1
