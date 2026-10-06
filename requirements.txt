@@ -1,22 +1,23 @@
 # ============================================
 # Immersive Voice Agent - Dependencies
 # ============================================
-# Covers both:
-#   - app.py                (Gradio web frontend - HuggingFace Spaces)
-#   - universal_agent_v3.py (Terminal agent - local)
+# Ce fichier est lu EN ENTIER par HuggingFace Spaces au build.
+# Il ne contient donc que le mode web (app.py).
+#
+# Mode terminal (universal_agent_v3.py), a installer en local seulement :
+#   pip install "pipecat-ai>=0.0.90" "daily-python>=0.10.0" "aiohttp>=3.9.0" "loguru>=0.7.0" "rich>=13.0.0"
 
 # --- Core (both modes) ---
-openai>=1.0.0
-python-dotenv>=1.0.0
+openai==1.109.1
+python-dotenv==1.1.1
 
 # --- Gradio Web Frontend (app.py) ---
-gradio>=4.0.0
-deepgram-sdk>=3.0.0
-elevenlabs>=1.0.0
+gradio==4.44.1
+huggingface_hub<1
+deepgram-sdk==3.10.1
+elevenlabs==1.58.1
 
-# --- Terminal Agent (universal_agent_v3.py) ---
-pipecat-ai>=0.0.90
-daily-python>=0.10.0
-aiohttp>=3.9.0
-loguru>=0.7.0
-rich>=13.0.0
+# --- Appel HTTP direct a Deepgram dans transcribe_audio() ---
+# Arrive de toute facon en dependance transitive, mais app.py l'importe
+# explicitement : on le declare pour ne pas dependre d'un hasard de resolution.
+requests>=2.31.0
